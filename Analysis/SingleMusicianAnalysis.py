@@ -1,3 +1,16 @@
+from geopy.geocoders import Nominatim
+import geopy
+from bs4 import BeautifulSoup
+import re
+import datetime
+import numpy as np
+import requests
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
 def find_nearest(array, value):
     # Finding the nearest value to the given one in the array
     array = np.asarray(array)
@@ -20,24 +33,28 @@ def convert_num(num):
 
 
 class Musician():
-    def __init__(self, link: str):
-        self.items = sp.artist(link.split('/')[-1])
-        self.link = link
-        self.artist_id = link.split('/')[-1]
+    def __init__(self, artist_link: str, ID: str, SECRET_ID: str):
+        self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=ID,
+                                                                   client_secret=SECRET_ID))
+        self.items = self.sp.artist(artist_link.split('/')[-1])
+        self.link = artist_link
+        self.artist_id = artist_link.split('/')[-1]
         self.artist_uri = self.items['uri']
 
         # Earliest possible release date
         self.CONST = datetime.datetime(1860, 4, 8)
 
         #getting the html as a text
-        self.soup_str = str(BeautifulSoup(requests.get(link).content, 'html.parser'))
+        self.soup_str = str(BeautifulSoup(requests.get(self.link).content, 'html.parser'))
 
         #coordinates of the city we reside in:
         self.coords_B = (52.520008, 13.404954)
 
+    def get_name(self):
+        return self.soup_str[self.soup_str.find('content="Listen to ')+19:self.soup_str.find(' on Spotify. Artist')]
     def get_similar_artists(self):
         # Artists related through Spotify suggestions
-        related_artists = sp.artist_related_artists(self.artist_id)
+        related_artists = self.sp.artist_related_artists(self.artist_id)
 
         artist_info = []
         for artist_el in related_artists['artists']:
@@ -45,12 +62,12 @@ class Musician():
             name = artist_el['name']  # We get the name
             followers = artist_el['followers']['total']  # We get Spotify followers
             # Getting the artists link through what was submitted
-            SPLink = f"https://open.spotify.com/artist/{sp.search(q=artist_el['name'], type='artist', limit=1)['artists']['items'][0]['id']}"
+            SPLink = f"https://open.spotify.com/artist/{self.sp.search(q=artist_el['name'], type='artist', limit=1)['artists']['items'][0]['id']}"
             artist_description = (name, followers, SPLink)
             artist_info.append(artist_description)
 
         artist_info = sorted(artist_info, key=lambda x: x[1])  # We sort artists by their following
-        if len(artist_info) > 10: #We don't more than 10 artists suggested by Spotify
+        if len(artist_info) > 10: # We don't do more than 10 artists suggested by Spotify
             return artist_info[:10]
         else:
             return artist_info
@@ -69,15 +86,8 @@ class Musician():
         link = self.get_insta_link()
         if link != 'No Instagram':
             #As we don't want to run into problems with viewing instagram many times, we run slow headless Chrome
-            chrome_options = Options()
-            chrome_options.add_argument("--headless")
-            driver = webdriver.Chrome(options=chrome_options)
-            driver.get(link)
-            html = str(driver.execute_script("return document.documentElement.innerHTML;"))
-
-            #Converting html
-            new_html = html[:html.find('Followers') - 1]
-            Followers_raw = new_html[new_html.rfind('content="') + 9:].replace(',', '')
+            string = str(BeautifulSoup(requests.get(link).content, 'html.parser'))
+            Followers_raw = string[string.find('property="og:url"')+34: string.find('Followers')-1]
             if Followers_raw[-1] == 'M':
                 return float(Followers_raw[:-1]) * 10 ** 6
             elif Followers_raw[-1] == 'K':
@@ -94,10 +104,15 @@ class Musician():
             return followers
         else:
             return None
-
+    def get_artist_radios(self):
+        indexes = [m.start() for m in re.finditer('href="/playlist/', self.soup_str)]
+        links = []
+        for index in indexes:
+            links.append('https://open.spotify.com' + self.soup_str[index + 6:index + 38])
+        return links
     def get_monthly_listeners(self):
-        all_dot = np.array([m.start() for m in re.finditer(' · ', soup_str)])
-        return soup_str[
+        all_dot = np.array([m.start() for m in re.finditer(' · ', self.soup_str)])
+        return self.soup_str[
                find_nearest(all_dot, self.soup_str.find('monthly listeners')) + 3:self.soup_str.find('monthly listeners')]
 
     def get_genres(self):
@@ -117,7 +132,7 @@ class Musician():
             return None
 
     def get_release_history(self):
-        dictionary = sp.artist_albums(self.artist_id)['items']
+        dictionary = self.sp.artist_albums(self.artist_id)['items']
         # Setting up initial constants
 
         released_tracks = 0
@@ -140,7 +155,7 @@ class Musician():
                     last_time = time
         # Structure of the return (How long ago was the latest release (days), Frequency of production of songs (every N days) per song,
         # number of songs produced)
-        if len(list) == 0 or released_tracks == 0:
+        if len(distance_between_tracks_list) == 0 or released_tracks == 0:
             return 'Error', 'Error'
 
         # Calculating the variables we care about
@@ -181,8 +196,21 @@ class Musician():
             else:
                 d['Location'].append('')
             d['Distance to Berlin (km)'].append(geopy.distance.geodesic(coords_1, self.coords_B).km)
-
+        # Returns a dictionary of {Date, Location, Distance} format
         return d
 
+    def get_discovered_on_playlists(self):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.get(self.link + '/discovered-on')
+        html = str(driver.execute_script("return document.documentElement.innerHTML;"))
+        links = []
+        all_occurrences = [m.start() for m in re.finditer('href="/playlist/', html)]
+        if len(all_occurrences) > 5:
+            all_occurrences = all_occurrences[:5]
+        for occurrence in all_occurrences:
+            links.append('https://open.spotify.com'+html[occurrence+6:occurrence+38])
+        return links
 
 
