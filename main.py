@@ -1,4 +1,5 @@
 from DataFrame import DataFrame
+import Collected_Data
 from Analysis.PlaylistAnalysis import Playlist
 import pandas as pd
 import os.path
@@ -17,12 +18,12 @@ ID = '8ff0297906e742889803ee92eaa3a88d'
 SECRET_ID = '75b1167b36884fd88c464a9f31dac548'
 
 if __name__ == '__main__':
-    test = SimpleTest(ID, SECRET_ID)
-    test.initial_test()
+    # test = SimpleTest(ID, SECRET_ID)
+    # test.initial_test()
 
-    df_Goal_3 = pd.read_excel('/Users/iliapopov/Desktop/Goal3.xlsx')
-    df_Goal_10 = pd.read_excel('/Users/iliapopov/Desktop/Goal10.xlsx')
+    df_Goal_3 = pd.read_excel('Collected_Data/Goal3.xlsx')
+    df_Goal_10 = pd.read_excel('Collected_Data/Goal10.xlsx')
 
     #This function creates output on the desktop
     df = DataFrame(ID, SECRET_ID)
-    df.Goal_11(df_Goal_3, df_Goal_10, '/Users/iliapopov/Desktop/Goal11_3.xlsx')
+    df.Goal_11(df_Goal_3, df_Goal_10, 'Collected_Data/Goal11_3.xlsx')
