@@ -23,11 +23,14 @@ class Playlist():
 
     def get_playlist_artists(self):
         # Extract the artists from the playlist
-        artists = []
+        artists = set()
         for track in self.playlist['tracks']['items']:
             artist_names = [artist['id'] for artist in track['track']['artists']]
-            artists.extend(artist_names)
+            artists.update(artist_names)
         return artists
+
+    def get_likes(self):
+        return self.playlist['followers']['total']
 
     def get_playlist_name(self):
         return self.playlist['name']

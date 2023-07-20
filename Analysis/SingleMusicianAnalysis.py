@@ -74,28 +74,29 @@ class Musician():
 
     def get_insta_link(self):
         all_rel = np.array([m.start() for m in re.finditer('rel', self.soup_str)])
-        if self.soup_str[
-           self.soup_str.find('instagram.com') - 8: find_nearest(all_rel, self.soup_str.find('instagram.com')) - 2] == '':
+        try:
+            value = self.soup_str[self.soup_str.find('instagram.com') - 8: find_nearest(all_rel, self.soup_str.find('instagram.com')) - 2]
+        except:
+            value = ''
+        if value == '':
             # If the part of the string where Instagram link was supposed to be is empty, we return nothing
             return 'No Instagram'
         else:
-            return self.soup_str[
-                   self.soup_str.find('instagram.com') - 8: find_nearest(all_rel, self.soup_str.find('instagram.com')) - 2]
+            return value
 
     def get_instagram_followers(self):
-        link = self.get_insta_link()
-        if link != 'No Instagram':
-            #As we don't want to run into problems with viewing instagram many times, we run slow headless Chrome
-            string = str(BeautifulSoup(requests.get(link).content, 'html.parser'))
-            Followers_raw = string[string.find('property="og:url"')+34: string.find('Followers')-1]
-            if Followers_raw[-1] == 'M':
-                return float(Followers_raw[:-1]) * 10 ** 6
-            elif Followers_raw[-1] == 'K':
-                return float(Followers_raw[:-1]) * 10 ** 3
+        try:
+            link = self.get_insta_link()
+            if link != 'No Instagram':
+                #As we don't want to run into problems with viewing instagram many times, we run slow headless Chrome
+                string = str(BeautifulSoup(requests.get(link).content, 'html.parser'))
+                Followers_raw = convert_num(string[string.find('property="og:url"')+34: string.find('Followers')-1])
+                return Followers_raw
             else:
-                return float(Followers_raw)
-        else:
+                return -1
+        except:
             return -1
+
 
     def get_followers(self):
         if len(self.items) > 0:
@@ -112,8 +113,8 @@ class Musician():
         return links
     def get_monthly_listeners(self):
         all_dot = np.array([m.start() for m in re.finditer(' · ', self.soup_str)])
-        return self.soup_str[
-               find_nearest(all_dot, self.soup_str.find('monthly listeners')) + 3:self.soup_str.find('monthly listeners')]
+        return convert_num(self.soup_str[
+               find_nearest(all_dot, self.soup_str.find('monthly listeners')) + 3:self.soup_str.find('monthly listeners')])
 
     def get_genres(self):
         if len(self.items) > 0:
@@ -131,8 +132,14 @@ class Musician():
         else:
             return None
 
+    def get_latest_release(self):
+
     def get_release_history(self):
-        dictionary = self.sp.artist_albums(self.artist_id)['items']
+        results = self.sp.artist_albums(self.artist_id)
+        albums = results['items']
+        while results['next']:
+            results = self.sp.next(results)
+            albums.extend(results['items'])
         # Setting up initial constants
 
         released_tracks = 0
@@ -140,11 +147,11 @@ class Musician():
         oldest_release = datetime.datetime.today()
 
         distance_between_tracks_list = []
-        for i in range(len(dictionary)):
-            if dictionary[i]['album_group'] != 'appears_on':  # We don't want to count features
-                released_tracks += dictionary[i]['total_tracks']
-                if len(dictionary[i]['release_date']) == 10:  # Checking for the format
-                    time = datetime.datetime.strptime(dictionary[i]['release_date'], "%Y-%m-%d")
+        for i in range(len(albums)):
+            if albums[i]['album_group'] != 'appears_on':  # We don't want to count features
+                released_tracks += albums[i]['total_tracks']
+                if len(albums[i]['release_date']) == 10:  # Checking for the format
+                    time = datetime.datetime.strptime(albums[i]['release_date'], "%Y-%m-%d")
                     if latest_release != self.CONST:
                         time_difference = np.abs(time - last_time).total_seconds()
                         distance_between_tracks_list.append(int(time_difference // (60 * 60 * 24)))
@@ -155,16 +162,17 @@ class Musician():
                     last_time = time
         # Structure of the return (How long ago was the latest release (days), Frequency of production of songs (every N days) per song,
         # number of songs produced)
-        if len(distance_between_tracks_list) == 0 or released_tracks == 0:
+        if len(distance_between_tracks_list) == 0 or released_tracks == 0 or latest_release == self.CONST:
             return 'Error', 'Error'
 
         # Calculating the variables we care about
         avg_track_release_time = int((datetime.datetime.today() - oldest_release).total_seconds()
                                      / (60 * 60 * 24 * released_tracks))
         avg_time_between_releases = np.average(distance_between_tracks_list)
-        time_since_latest_release = datetime.datetime.today() - latest_release
-        d = {'Average Track Release Time (days)': avg_track_release_time, 'Average Time Between Tracks (days)':
-             avg_time_between_releases, 'Time Since Last Release (days)': time_since_latest_release}
+        time_since_latest_release = (datetime.datetime.today() - latest_release).total_seconds() / (60 * 60 * 24)
+        career_time = int((datetime.datetime.today() - oldest_release).total_seconds() / (60 * 60 * 24))
+        # 'Average Track Release Time (days)', 'Average Time Between Tracks (days)', 'Time Since Last Release (days)', 'Total Career'
+        d = [avg_track_release_time, avg_time_between_releases, time_since_latest_release, career_time, released_tracks]
         return d
 
     def is_on_tour(self):
