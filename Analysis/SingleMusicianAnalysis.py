@@ -131,9 +131,6 @@ class Musician():
             return followers
         else:
             return None
-
-    def get_latest_release(self):
-
     def get_release_history(self):
         results = self.sp.artist_albums(self.artist_id)
         albums = results['items']
