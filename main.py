@@ -21,12 +21,11 @@ if __name__ == '__main__':
     # test = SimpleTest(ID, SECRET_ID)
     # test.initial_test()
 
-    df_Goal_3 = pd.read_excel('Collected_Data/Goal3.xlsx')
-    df_Goal_10 = pd.read_excel('Collected_Data/Goal10.xlsx')
-
-    #This function creates output on the desktop
+    # df_Goal_3 = pd.read_excel('Collected_Data/Goal3.xlsx')
+    # df_Goal_10 = pd.read_excel('Collected_Data/Goal10.xlsx')
+    #
+    # #This function creates output on the desktop
     df = DataFrame(ID, SECRET_ID)
-    save_path = 'Collected_Data/Goal12.csv'
-    playlists = ['https://open.spotify.com/playlist/6u5QcJNKuXvQJ2kJ7WMnNS']
-    df_1 = df.Goal_Artist_Scout(playlists)
+    save_path = 'Collected_Data/Goal13.csv'
+    df_1 = df.Goal_13()
     df_1.to_csv(save_path)

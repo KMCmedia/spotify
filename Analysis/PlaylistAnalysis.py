@@ -23,10 +23,21 @@ class Playlist():
 
     def get_playlist_artists(self):
         # Extract the artists from the playlist
+        offset = 0
+        limit = 100
+
+        total_tracks = self.playlist['tracks']['total']
+        tracks = []
+
+        while offset < total_tracks:
+            results = self.sp.playlist_tracks(self.playlist_id, offset=offset, limit=limit)
+            tracks.extend(results['items'])
+            offset += limit
         artists = set()
-        for track in self.playlist['tracks']['items']:
+        for track in tracks:
             artist_names = [artist['id'] for artist in track['track']['artists']]
             artists.update(artist_names)
+        artists = ['https://open.spotify.com/artist/' + s for s in artists]
         return artists
 
     def get_likes(self):

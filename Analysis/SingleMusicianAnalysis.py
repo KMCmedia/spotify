@@ -7,9 +7,12 @@ import numpy as np
 import requests
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+import urllib.request
+from PIL import Image
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+
 
 def find_nearest(array, value):
     # Finding the nearest value to the given one in the array
@@ -19,7 +22,7 @@ def find_nearest(array, value):
 
 
 def convert_num(num):
-    # This function is needed because instagram
+    # This function converts numbers from the format ...K/M into floats
     if num[-1] == ' ':
         num = num[:-1]
     if num[-1] == 'M':
@@ -29,13 +32,14 @@ def convert_num(num):
         # K converting to thousands
         return float(num[:-1]) * 10 ** 3
     else:
+        # Deleting the commas separating thousands
         return float(num.replace(',', ''))
 
 
 class Musician():
     def __init__(self, artist_link: str, ID: str, SECRET_ID: str):
         self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=ID,
-                                                                   client_secret=SECRET_ID))
+                                                                        client_secret=SECRET_ID))
         self.items = self.sp.artist(artist_link.split('/')[-1])
         self.link = artist_link
         self.artist_id = artist_link.split('/')[-1]
@@ -44,14 +48,34 @@ class Musician():
         # Earliest possible release date
         self.CONST = datetime.datetime(1860, 4, 8)
 
-        #getting the html as a text
+        # getting the html of the website as a text
         self.soup_str = str(BeautifulSoup(requests.get(self.link).content, 'html.parser'))
 
-        #coordinates of the city we reside in:
+        # coordinates of the city we reside in:
         self.coords_B = (52.520008, 13.404954)
 
     def get_name(self):
-        return self.soup_str[self.soup_str.find('content="Listen to ')+19:self.soup_str.find(' on Spotify. Artist')]
+        # Gets a name of an artist based on his/her ID
+        return self.soup_str[self.soup_str.find('content="Listen to ') + 19:self.soup_str.find(' on Spotify. Artist')]
+
+    def get_profile_picture(self, link: str):
+        # Getting the name of an artist
+        pic_name = self.get_name()
+
+        # Get all the links which fit the condition for an image
+        link_regex = re.compile(r'(https://i.scdn.co/image/\S+)')
+
+        # Get the indexes of all the links
+        links = re.findall(link_regex, self.soup_str)
+
+        # requesting the image of the last link
+        urllib.request.urlretrieve(links[0][:-1], f"{pic_name}.png")
+
+        # Saving the collected image
+        img = Image.open(f"{pic_name}.png")
+        img.save(f"Collected_Data/Images Kiremico/{pic_name}.png")
+        return None
+
     def get_similar_artists(self):
         # Artists related through Spotify suggestions
         related_artists = self.sp.artist_related_artists(self.artist_id)
@@ -67,15 +91,19 @@ class Musician():
             artist_info.append(artist_description)
 
         artist_info = sorted(artist_info, key=lambda x: x[1])  # We sort artists by their following
-        if len(artist_info) > 10: # We don't do more than 10 artists suggested by Spotify
+        if len(artist_info) > 10:  # We don't do more than 10 artists suggested by Spotify
             return artist_info[:10]
         else:
             return artist_info
 
     def get_insta_link(self):
+        # Every external link starts with rel. That's we get all the instances of those links
         all_rel = np.array([m.start() for m in re.finditer('rel', self.soup_str)])
+
+        # We use try-except structure because the instagram link might be missing
         try:
-            value = self.soup_str[self.soup_str.find('instagram.com') - 8: find_nearest(all_rel, self.soup_str.find('instagram.com')) - 2]
+            value = self.soup_str[self.soup_str.find('instagram.com') - 8: find_nearest(all_rel, self.soup_str.find(
+                'instagram.com')) - 2]
         except:
             value = ''
         if value == '':
@@ -88,15 +116,15 @@ class Musician():
         try:
             link = self.get_insta_link()
             if link != 'No Instagram':
-                #As we don't want to run into problems with viewing instagram many times, we run slow headless Chrome
+                # As we don't want to run into problems with viewing instagram many times, we run requests library
+                # Which is 10 times faster than using headless Chrome for our purposes
                 string = str(BeautifulSoup(requests.get(link).content, 'html.parser'))
-                Followers_raw = convert_num(string[string.find('property="og:url"')+34: string.find('Followers')-1])
+                Followers_raw = convert_num(string[string.find('property="og:url"') + 34: string.find('Followers') - 1])
                 return Followers_raw
             else:
                 return -1
         except:
             return -1
-
 
     def get_followers(self):
         if len(self.items) > 0:
@@ -105,16 +133,30 @@ class Musician():
             return followers
         else:
             return None
+
     def get_artist_radios(self):
+        #Find all the instances of the word playlist, which is usually related to artist radio
         indexes = [m.start() for m in re.finditer('href="/playlist/', self.soup_str)]
         links = []
         for index in indexes:
             links.append('https://open.spotify.com' + self.soup_str[index + 6:index + 38])
         return links
+
     def get_monthly_listeners(self):
-        all_dot = np.array([m.start() for m in re.finditer(' · ', self.soup_str)])
-        return convert_num(self.soup_str[
-               find_nearest(all_dot, self.soup_str.find('monthly listeners')) + 3:self.soup_str.find('monthly listeners')])
+        try:
+            #Monthly listeners stat with a dot surrounded by spaces
+            all_dot = np.array([m.start() for m in re.finditer(' · ', self.soup_str)])
+            return convert_num(self.soup_str[
+                               find_nearest(all_dot, self.soup_str.find('monthly listeners')) + 3:self.soup_str.find(
+                                   'monthly listeners')])
+        except:
+            return 0
+
+    def get_latest_release(self):
+        # Search for the artist and his/her releases
+        results = self.sp.artist_albums(self.artist_id)['items']
+        results = sorted(results, key=lambda x: x['release_date'])
+        return results[-1]['external_urls']['spotify']
 
     def get_genres(self):
         if len(self.items) > 0:
@@ -131,6 +173,7 @@ class Musician():
             return followers
         else:
             return None
+
     def get_release_history(self):
         results = self.sp.artist_albums(self.artist_id)
         albums = results['items']
@@ -160,7 +203,7 @@ class Musician():
         # Structure of the return (How long ago was the latest release (days), Frequency of production of songs (every N days) per song,
         # number of songs produced)
         if len(distance_between_tracks_list) == 0 or released_tracks == 0 or latest_release == self.CONST:
-            return 'Error', 'Error'
+            return np.zeros(5)
 
         # Calculating the variables we care about
         avg_track_release_time = int((datetime.datetime.today() - oldest_release).total_seconds()
@@ -173,11 +216,12 @@ class Musician():
         return d
 
     def is_on_tour(self):
-        #getting the html file using requests library
+        # getting the html file using requests library
         if self.soup_str.find('On tour') == -1:
             return False
         else:
             return True
+
     def get_tour_info(self):
         URL = self.link + '/concerts'
         geolocator = Nominatim(user_agent="geoapiExercises")
@@ -215,7 +259,5 @@ class Musician():
         if len(all_occurrences) > 5:
             all_occurrences = all_occurrences[:5]
         for occurrence in all_occurrences:
-            links.append('https://open.spotify.com'+html[occurrence+6:occurrence+38])
+            links.append('https://open.spotify.com' + html[occurrence + 6:occurrence + 38])
         return links
-
-
