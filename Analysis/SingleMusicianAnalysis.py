@@ -35,6 +35,13 @@ def convert_num(num):
         # Deleting the commas separating thousands
         return float(num.replace(',', ''))
 
+def time_difference(start_date, end_date):
+    date_format = "%Y-%m-%d"
+    start_datetime = datetime.datetime.strptime(start_date, date_format)
+    end_datetime = datetime.datetime.strptime(end_date, date_format)
+    time_delta = end_datetime - start_datetime
+    return time_delta
+
 
 class Musician():
     def __init__(self, artist_link: str, ID: str, SECRET_ID: str):
@@ -58,7 +65,7 @@ class Musician():
         # Gets a name of an artist based on his/her ID
         return self.soup_str[self.soup_str.find('content="Listen to ') + 19:self.soup_str.find(' on Spotify. Artist')]
 
-    def get_profile_picture(self, link: str):
+    def get_profile_picture(self):
         # Getting the name of an artist
         pic_name = self.get_name()
 
@@ -261,3 +268,23 @@ class Musician():
         for occurrence in all_occurrences:
             links.append('https://open.spotify.com' + html[occurrence + 6:occurrence + 38])
         return links
+
+    def get_instagram_info(self):
+        try:
+            link = self.get_insta_link()
+            string = str(BeautifulSoup(requests.get(link).content, 'html.parser'))
+            listing = [m.start() for m in re.finditer('dateCreated', string)]
+            dates = []
+            for i in range(1, len(listing)):
+                if string[listing[i - 1]:listing[i]].find('dateModified') != -1:
+                    dates.append(re.findall("\d+\-\d+\-\d+",string[listing[i - 1]:listing[i]])[0])
+            comments_avg = np.average([int(m[16:-1]) for m in re.findall('"commentCount":"\d+"', string)])  # Average comments
+            likes_avg = np.average(
+                [int(m[23:]) for m in re.findall('"userInteractionCount":\d+', string) if int(m[23:]) != 0])  # Average likes
+            sum = 0
+            for i in range(1, len(dates)):
+                sum += time_difference(dates[i], dates[i - 1]).total_seconds() // (60 * 60 * 24)
+            avg_release_time = sum // (len(dates) - 1) # Average time in between posts on Insta in days
+            return likes_avg, comments_avg, avg_release_time
+        except:
+            return -1, -1, -1

@@ -93,6 +93,34 @@ class DataFrame():
         else:
             return False, False
 
+    def Goal_14(self, playlist_link: str):
+        dictionary = {'Song Name': [], 'Artist': [], 'IG':[]}
+        playlist = Playlist(playlist_link, self.ID, self.SECRET_ID)
+        dictionary['Song Name'] = playlist.get_list_of_track_names()
+        artists = playlist.get_playlist_artists(repeating = True)
+        dictionary['Artist'] = [Musician(artist, self.ID, self.SECRET_ID).get_name() for artist in artists]
+        dictionary['IG'] = [Musician(artist, self.ID, self.SECRET_ID).get_insta_link() for artist in artists]
+        for artist in artists:
+            Musician(artist, self.ID, self.SECRET_ID).get_profile_picture()
+        print(dictionary)
+        return pd.DataFrame(data=dictionary)
+
+    def Goal_11_4(self):
+        dictionary = {'Artist Link': [], 'Average Likes': [], 'Average Comments': [], 'Average Release Time IG': []}
+        artists = pd.read_excel('Collected_Data/Goal11_3.xlsx')['Artists Spotify Link'][1000:]
+        i = 1
+        for artist in artists:
+            mus = Musician(artist, self.ID, self.SECRET_ID)
+            result = mus.get_instagram_info()
+            dictionary['Artist Link'].append(artist)
+            dictionary['Average Likes'].append(result[0])
+            dictionary['Average Comments'].append(result[1])
+            dictionary['Average Release Time IG'].append(result[2])
+            print(f'Analyzed {i}/{len(artists)} artists ')
+            i += 1
+        return pd.DataFrame(data=dictionary)
+
+
     def Goal_Artist_Scout(self, playlists: list, thresholds = SAMPLE_DICT):
         filtered_artists = {'Artist Name': [], 'IG Link': [], 'Latest Release': []}
 

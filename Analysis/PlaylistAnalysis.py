@@ -21,7 +21,7 @@ class Playlist():
                 oldest_date = release_date
         return oldest_date
 
-    def get_playlist_artists(self):
+    def get_playlist_artists(self, repeating = False):
         # Extract the artists from the playlist
         offset = 0
         limit = 100
@@ -33,11 +33,17 @@ class Playlist():
             results = self.sp.playlist_tracks(self.playlist_id, offset=offset, limit=limit)
             tracks.extend(results['items'])
             offset += limit
-        artists = set()
-        for track in tracks:
-            artist_names = [artist['id'] for artist in track['track']['artists']]
-            artists.update(artist_names)
-        artists = ['https://open.spotify.com/artist/' + s for s in artists]
+        if repeating:
+            artists = []
+            for track in tracks:
+                artist_name = 'https://open.spotify.com/artist/'+track['track']['artists'][0]['id']
+                artists.append(artist_name)
+        else:
+            artists = set()
+            for track in tracks:
+                artist_names = [artist['id'] for artist in track['track']['artists']]
+                artists.update(artist_names)
+            artists = ['https://open.spotify.com/artist/' + s for s in artists]
         return artists
 
     def get_likes(self):
