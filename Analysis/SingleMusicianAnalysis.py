@@ -14,6 +14,15 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 
+def contains_only_numbers_and_letters(input_string):
+    # Define the regular expression pattern to match alphanumeric characters
+    pattern = r'^[a-zA-Z0-9]+$'
+
+    # Use the re.match() function to check if the entire string matches the pattern
+    match = re.match(pattern, input_string)
+
+    # If match is not None, it means the string contains only numbers and letters
+    return match is not None
 def find_nearest(array, value):
     # Finding the nearest value to the given one in the array
     array = np.asarray(array)
@@ -146,7 +155,8 @@ class Musician():
         indexes = [m.start() for m in re.finditer('href="/playlist/', self.soup_str)]
         links = []
         for index in indexes:
-            links.append('https://open.spotify.com' + self.soup_str[index + 6:index + 38])
+            if contains_only_numbers_and_letters(self.soup_str[index + 6:index + 38]):
+                links.append('https://open.spotify.com' + self.soup_str[index + 6:index + 38])
         return links
 
     def get_monthly_listeners(self):
