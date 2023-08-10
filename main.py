@@ -25,15 +25,17 @@ if __name__ == '__main__':
     # test.initial_test()
     #
     # #This function creates output on the desktop
-    df = DataFrame(ID, SECRET_ID)
-    save_path = 'Collected_Data/Goal22848.csv'
-    df = df.Goal_14('https://open.spotify.com/playlist/1H3z4xsH7tlbjZ7VlkM0Vs')
-    df.to_csv(save_path, index=False)
-    # model = Model(ID, SECRET_ID, 'Collected_Data/Model_1.csv', 'Monthly Listeners')
-    # links = ['https://open.spotify.com/artist/0BSNfFPlI0efsuZljJtknX', 'https://open.spotify.com/artist/6FTHkjqtYAK0uJIKlHNOXi',
-    #          'https://open.spotify.com/artist/4rulVipLmUL2Mg67SIUmCO', 'https://open.spotify.com/artist/3KuNrap7xPWVJCyBHAE4le',
-    #          'https://open.spotify.com/artist/4lBSzo2LS8asEzoePv6VLM', 'https://open.spotify.com/artist/5kcg3AWB22uwFWJWhpVfBV']
-    # model.get_artist_prediction(links).to_csv('Collected_Data/Results.csv', index=False)
+    # df = DataFrame(ID, SECRET_ID)
+    # save_path = 'Collected_Data/Goal22848.csv'
+    # df = df.Goal_14('https://open.spotify.com/playlist/1H3z4xsH7tlbjZ7VlkM0Vs')
+    # df.to_csv(save_path, index=False)
+    model = Model(ID, SECRET_ID, 'Collected_Data/Model.csv', 'Monthly Listeners')
+    links = pd.read_excel('Collected_Data/Goal3.xlsx')['Artist Link']
+    for i in range(16, len(links), 5):
+        df = pd.read_csv('Collected_Data/Results.csv')
+        new_df = model.get_artist_prediction(links[i:i+5])
+        df = pd.concat([df, new_df])
+        df.to_csv('Collected_Data/Results.csv', index=False)
     # output=add_listeners_and_artists(pd.read_csv('Collected_Data/Model.csv'))
     # output = output.drop_duplicates()
-    # output.to_csv('Collected_Data/Model_1.csv', index=False)
+    # output.to_csv('Collected_Data/Model.csv', index=False)

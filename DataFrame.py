@@ -63,14 +63,16 @@ class DataFrame():
         dictionary = {'Song Name': [], 'Artist': [], 'IG': []}
         playlist = Playlist(playlist_link, self.ID, self.SECRET_ID)
         dictionary['Song Name'] = playlist.get_list_of_track_names()
+        print('Collected Songs...')
         artists = playlist.get_playlist_artists(repeating=True)
         dictionary['Artist'] = [Musician(artist, self.ID, self.SECRET_ID).get_name() for artist in artists]
         dictionary['IG'] = [Musician(artist, self.ID, self.SECRET_ID).get_insta_link() for artist in artists]
+        print('Collected names and links...')
         for artist in artists:
             Musician(artist, self.ID, self.SECRET_ID).get_profile_picture()
         return pd.DataFrame(data=dictionary)
 
-    def Goal_11_4(self):
+    def Goal_11(self):
         dictionary = {'Artist Link': [], 'Average Likes': [], 'Average Comments': [], 'Average Release Time IG': []}
         artists = pd.read_excel('Collected_Data/PredictiveModelSet.csv')['Artists Spotify Link']
         i = 1

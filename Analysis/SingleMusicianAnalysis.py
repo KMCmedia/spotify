@@ -225,7 +225,11 @@ class Musician():
         # Calculating the variables we care about
         avg_track_release_time = int((datetime.datetime.today() - oldest_release).total_seconds()
                                      / (60 * 60 * 24 * released_tracks))
-        avg_time_between_releases = np.average(distance_between_tracks_list)
+        try:
+            avg_time_between_releases = np.average(distance_between_tracks_list)
+        except:
+            avg_time_between_releases = 0
+
         time_since_latest_release = (datetime.datetime.today() - latest_release).total_seconds() / (60 * 60 * 24)
         career_time = int((datetime.datetime.today() - oldest_release).total_seconds() / (60 * 60 * 24))
         # 'Average Track Release Time (days)', 'Average Time Between Tracks (days)', 'Time Since Last Release (days)', 'Total Career'

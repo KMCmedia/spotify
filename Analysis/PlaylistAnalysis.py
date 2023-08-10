@@ -27,6 +27,7 @@ class Playlist():
         limit = 100
 
         total_tracks = self.playlist['tracks']['total']
+        print('total tracks', total_tracks)
         tracks = []
 
         while offset < total_tracks:

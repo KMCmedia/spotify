@@ -136,8 +136,8 @@ class Model():
 
             predicted_y = model.predict(np.array(x).reshape(1, -1))
             y = row[self.y_name]
-            # residual = np.abs(predicted_y - y)
-            residual = predicted_y - y
+            residual = np.abs(predicted_y - y)
+            # residual = predicted_y - y - this is for getting bad artists
             bucket_num = int((y - minimum)//step)
             if array[bucket_num][1] > residual:
                 array[bucket_num][0] = row['Artist Inside']
@@ -175,15 +175,14 @@ class Model():
         avg_artist_num = 0
         avg_listeners = 0
         for playlist in playlists:
-            print(playlist)
             play = Playlist(playlist, self.ID, self.SECRET_ID)
             likes += play.get_likes()
             i += 1
             artists = play.get_playlist_artists()
             print(f'Collected Data by {100*i//2}%...')
             avg_artist_num += len(artists)
-            if len(artists) > 10:
-                artists = artists[:10]
+            if len(artists) > 4:
+                artists = artists[:4]
             for art in artists:
                 mus = Musician(art, self.ID, self.SECRET_ID)
                 time += mus.get_release_history()[0]
@@ -191,6 +190,11 @@ class Model():
                 j += 1
         array = artist.get_release_history()
         array_1 = artist.get_instagram_info()
+        #Dumb troubleshooting
+        if array_1[2] == 0:
+            array_1 = [100, 1, 20]
+        if i == 0 or j == 0:
+            i,j = 1,1
         d['Artist AVG Release'].append(array[0])
         d['Number of artists in playlist'].append(avg_artist_num / i)
         d['AVG listeners playlist'].append(avg_listeners/i)
@@ -230,7 +234,7 @@ class Model():
         x = [safe_log(df[parameter][0]) for parameter in parameters]
 
         # get residual (if positive, good, if negative bad)
-        residual_percentage = 100*(y/np.exp(model.predict(np.array(x).reshape(1, -1))) - 1)
+        residual_percentage = 100*(y/model.predict(np.array(x).reshape(1, -1)) - 1)
         # Let's get what needs to be increased
         filtered_row = df_compare[df_compare['Monthly listeners'] > y].iloc[[0]]
         x = [int(np.exp(element)) for element in x]
@@ -240,6 +244,10 @@ class Model():
                 filtered_row[parameter] -= int(np.log(x[i]))
             else:
                 filtered_row[parameter] -= x[i]
+            if filtered_row[parameter].to_numpy()[0] > 0:
+                filtered_row[parameter] = f'You need an increase by {filtered_row[parameter].to_numpy()[0] }'
+            else:
+                filtered_row[parameter] = f'You are better by {-filtered_row[parameter].to_numpy()[0] }'
             i += 1
         if residual_percentage > 100:
             filtered_row['Performance'] = f'You are doing better by {residual_percentage[0]-100}% than model predicted. Keep up!'
@@ -251,15 +259,13 @@ class Model():
     def get_artist_prediction(self, links: list):
         SCALE = 5000
         df_0 = pd.DataFrame()
+        i = 0
         for link in links:
-            try:
-                df = self.get_strategy_data(SCALE, link)
-                if df_0.empty:
-                    df_0 = df
-                else:
-                    df_0 = pd.concat([df, df_0], ignore_index=True)
-            except:
-                print('There is an Error somewhere I anm too lazy to fix')
+            df = self.get_strategy_data(SCALE, link)
+            if df_0.empty:
+                df_0 = df
+            else:
+                df_0 = pd.concat([df, df_0], ignore_index=True)
         return df_0
 
 
